@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "main.h"
 #include "gpiodef.h"
+#include "swgp.h"
 #include "swi2c.h"
 #include "swspi.h"
 #include "st7735.h"
@@ -29,8 +30,15 @@ sw35xx_t sw3518 = { 0 };
 void assert_failed(uint8_t *file, uint32_t line) { }
 #endif /* USE_FULL_ASSERT */
 #define ADV_VREF_PREAMP (4096 * 1210)
+uint8_t color_index = 0;
+int8_t timeout = 120;
+uint16_t oldsta[5];
 
-uint16_t oldsta[6];
+void update_st7735_color(void) {
+		color_index &= 7;
+		st7735.d.colorf = st7735_colorpalette[color_index];
+		color_index++;
+}
 
 void init_adc(ADC_HandleTypeDef *d, void *out) {
 	uint32_t idx, res = 0;
@@ -57,108 +65,140 @@ void init_adc(ADC_HandleTypeDef *d, void *out) {
 }
 
 void update_lcd_static(lcddev_t *d) {
-	int bakx;
+	int bakx, lblw, lblh, _x, _y;
 	FontDef *pF = &deffont;
 	FontDef *p1 = &Font_6x8;
 
 	bakx = 0;
-
+	lblw = p1->FontWidth;
+	lblh = (p1->FontHeight*9)+8;
 	fontdraw_set_string_dir(d, 1);
-	d->curX = 0; d->curY = 0;
+	d->curX = 0; d->curY = 0; 
+	_x = d->curX; _y = d->curY;
 	fontdraw_stringFont(d, (char*)"out", 0, p1);
 	d->curY += 4;
 	fontdraw_stringFont(d, (char*)"c/A", 0, p1);
 	d->curY += 4;
 	fontdraw_stringFont(d, (char*)"p/A", 0, p1);
+	st7735_update_window(d->parent, _x, _y, lblw, lblh);
 
 	d->curX = d->frameWidth - p1->FontWidth; d->curY = 0;
+	_x = d->curX; _y = d->curY;
 	fontdraw_stringFont(d, (char*)"vin", 0, p1);
 	d->curY += 4;
 	fontdraw_stringFont(d, (char*)"c/C", 0, p1);
 	d->curY += 4;
 	fontdraw_stringFont(d, (char*)"p/C", 0, p1);
 	fontdraw_set_string_dir(d, 0);
-
+	st7735_update_window(d->parent, _x, _y, lblw, lblh);
 
 	bakx = (d->frameWidth >> 1) - (pF->FontWidth >> 1);
 	d->curX = bakx; d->curY = 0;
+	_x = d->curX; _y = d->curY;
 	fontdraw_stringFont(d, "V", 1, pF);
 	d->curX = bakx; d->curY += pF->FontHeight + 4;
 	fontdraw_stringFont(d, "A", 1, pF);
 	d->curX = bakx; d->curY += pF->FontHeight + 4;
 	fontdraw_stringFont(d, "W", 1, pF);
+	st7735_update_window(d->parent, _x, _y, pF->FontWidth, (pF->FontHeight*3)+8);
 }
 
 void update_smalllabel(lcddev_t *d) {
 	FontDef *p1 = &Font_6x8;
 	FontDef *pF = &deffont;
-
+	int _x, _y;
 	d->curX = (d->frameWidth >> 1) - ((p1->FontWidth*13) >> 1);
 	d->curY = pF->FontHeight - 1;
+	_x = d->curX; _y = d->curY;
 	fontdraw_stringFont(d, "Vout <-> Vin", 1, p1);
+	st7735_update_window(d->parent, _x, _y, p1->FontWidth*12, p1->FontHeight );
 
 	d->curX = (d->frameWidth >> 1) - ((p1->FontWidth*15) >> 1);
 	d->curY = (pF->FontHeight << 1) + 3;
+	_x = d->curX; _y = d->curY;
 	fontdraw_stringFont(d, "portA <-> portC", 1, p1);
+	st7735_update_window(d->parent, _x, _y, p1->FontWidth*12, p1->FontHeight );
+	update_st7735_color();
 }
 
 void update_sw3518(sw35xx_t *swt, lcddev_t *d) {
-	int bakx, lblw, lblh;
-	char str[64];
+	int bakx, lblw, lblh, _x, _y;
+	char str[8];
 	FontDef *pF = &Font_12x16N;
 	FontDef *p1 = &Font_6x8;
 
 	bakx = (int)sw35xx_version(swt);
 	if(! swt->pDev) { return; }
 	lblw = (pF->FontWidth * 4) + pF->dotwidth;
-	lblh = (pF->FontHeight * 3) + 24;
+	lblh = pF->FontHeight;	
 	SW35xx_readStatus(swt, 0);
 
 	d->curX = 8; d->curY = 4; //Vout
-	//if(oldsta[0]!=swt->vout_mV) {
+	_x = d->curX; _y = d->curY;
+	if(oldsta[0]!=swt->vout_mV) {
 		str_4digitL(swt->vout_mV, str);
-		fontdraw_stringFont(d, str, 1, pF);
-		oldsta[0]=swt->vout_mV; oldsta[2] |= 1;
-	//} else { oldsta[2] &= ~1; }
+		fontdraw_stringFont(d, str, 1, pF);		
+		oldsta[0]=swt->vout_mV; 
+		st7735_update_window(d->parent, _x, _y, lblw, lblh);
+		update_st7735_color();
+	}
 	d->curX = 8; d->curY += pF->FontHeight + 12; //c/A
-	//if(oldsta[1]!=swt->iout_usba_mA) {
+	_x = d->curX; _y = d->curY;
+	if(oldsta[1]!=swt->iout_usba_mA) {
 		str_4digitL(swt->iout_usba_mA, str); 
 		fontdraw_stringFont(d, str, 1, pF);		
-		oldsta[1]=swt->iout_usba_mA; oldsta[2] |= 2;
-	//} else { oldsta[2] &= ~2; }
+		oldsta[1]=swt->iout_usba_mA; oldsta[4] |= 1;
+		st7735_update_window(d->parent, _x, _y, lblw, lblh);
+		update_st7735_color();
+	} else { oldsta[4] &= ~1; }
 	d->curX = 8; d->curY += pF->FontHeight + 12; //p/A
-	//if(oldsta[2]&3) {
+	_x = d->curX; _y = d->curY;
+	if(oldsta[4]&1) {
 		str_4digitL((swt->iout_usba_mA * swt->vout_mV)/1000, str);
-		fontdraw_stringFont(d, str, 1, pF);		
-	//}
-	//oldsta[2] &= ~3;
-	//st7735_update_window(d->parent, 8, 4, lblw, lblh);
+		fontdraw_stringFont(d, str, 1, pF);
+		st7735_update_window(d->parent, _x, _y, lblw, lblh);
+		update_st7735_color();
+	}	
 
 	bakx = d->frameWidth - p1->FontWidth;
 	bakx -= (pF->FontWidth * 4) + pF->dotwidth;
-	d->curX = bakx; d->curY = 4;    
-	//if(oldsta[3]!=swt->vin_mV) {
+	d->curX = bakx; d->curY = 4;
+	_x = d->curX; _y = d->curY;
+	if(oldsta[3]!=swt->vin_mV) {
 		str_4digitL(swt->vin_mV, str);
 		fontdraw_stringFont(d, str, 1, pF);
-		oldsta[3]=swt->vin_mV; oldsta[2]|=4;
-	//} else { oldsta[2] &= ~4; }
+		oldsta[3]=swt->vin_mV; 
+		st7735_update_window(d->parent, _x, _y, lblw, lblh);
+		update_st7735_color();
+	}
 	d->curX = bakx; d->curY += pF->FontHeight + 12;
-	//if(oldsta[4]!=swt->iout_usbc_mA) {
+	_x = d->curX; _y = d->curY;
+	if(oldsta[2]!=swt->iout_usbc_mA) {
 		str_4digitL(swt->iout_usbc_mA, str);
 		fontdraw_stringFont(d, str, 1, pF);
-		oldsta[4]=swt->iout_usbc_mA; oldsta[2]|=8;
-	//} else { oldsta[2] &= ~8; }
+		oldsta[2]=swt->iout_usbc_mA; oldsta[4]|=2;
+		st7735_update_window(d->parent, _x, _y, lblw, lblh);
+		update_st7735_color();
+	} else { oldsta[4] &= ~2; }
 	d->curX = bakx; d->curY += pF->FontHeight + 12;
-	//if(oldsta[2]&12) {
+	_x = d->curX; _y = d->curY;
+
+	if(oldsta[4]&2) {
 		str_4digitL((swt->vout_mV * swt->iout_usbc_mA)/1000, str);
 		fontdraw_stringFont(d, str, 1, pF);
-	//}
-	//oldsta[2] &= ~12;
-	//st7735_update_window(d->parent, bakx, 4, lblw, lblh);
+		st7735_update_window(d->parent, _x, _y, lblw, lblh);
+		update_st7735_color();
+	}
+
+	if((oldsta[4] & 3) == 0) {
+		if(timeout > 0) { timeout--; }
+		else { timeout=0; st7735_set_idle(d->parent, 1); }
+	} else { timeout = 120; st7735_set_idle(d->parent, 0); }
+	oldsta[4] = 0;
 }
 
 int realmain(void) {
-    int8_t _val_ = 0;
+	uint8_t _val_ = 0;
     lcddev_t *d = &(st7735.d);
 
 	swi2c_HWinit(&si2c1, &hi2c1, NULL);
@@ -176,34 +216,35 @@ int realmain(void) {
 
     	//fontdraw_stringFont(d, (char*)"--test--", 0, &deffont);
 	update_lcd_static(d);
+	update_smalllabel(d);
 
 	oldsta[0]=0xffff; oldsta[1]=0xffff; oldsta[2]=0xffff; oldsta[3]=0xffff; oldsta[4]=0xffff; oldsta[5]=0xffff;
 	sw35xx_init(&sw3518, &si2c1);
 	update_sw3518(&sw3518, d);
 
-	st7735.d.update(d);
+	//st7735.d.update(d);
 	//init_adc(&hadc1, NULL);
 	swgp_gpmode(&tLED, 1);
 	while (1) {
-		_val_ ++;
-		swgp_gpo(&tLED, 1);
-		update_sw3518(&sw3518, d);
-		update_smalllabel(d);
-		st7735.d.update(d);
-		swgp_delay_ms(500);
+		_val_++;
 		_val_ &= 7;
-		swgp_gpo(&tLED, 0);
-		update_sw3518(&sw3518, d);
-		update_smalllabel(d);
-		st7735.d.update(d);
-		swgp_delay_ms(500);
+		if(!_val_) { 
+			update_lcd_static(d);
+		} else {
+			swgp_gpo(&tCSF, 1);
+			swgp_gpo(&tLED, 1);
+			update_sw3518(&sw3518, d);
+			//update_smalllabel(d);
+			swgp_delay_ms(500);
 
-		d->colorf = st7735_colorpalette[_val_];
-		//if(!_val_) { 
-			//d->colorf |= 0x18e3;
-			//d->colorf += 0x2104;
-			//d->colorf &= 0xf79e;
-			//update_lcd_static(d);
-		//}
+			swgp_gpo(&tCSF, 1);
+			swgp_gpo(&tLED, 0);
+			update_sw3518(&sw3518, d);
+			//update_smalllabel(d);
+			//st7735.d.update(d);
+			swgp_delay_ms(500);
+
+			//update_st7735_color();
+		}
 	}
 }
