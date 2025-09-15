@@ -107,18 +107,32 @@ void update_smalllabel(lcddev_t *d) {
 	FontDef *p1 = &Font_6x8;
 	FontDef *pF = &deffont;
 	int _x, _y;
-	d->curX = (d->frameWidth >> 1) - ((p1->FontWidth*13) >> 1);
+	d->curX = (d->frameWidth >> 1) - (pF->FontWidth>>1) - (p1->FontWidth*3);
 	d->curY = pF->FontHeight - 1;
 	_x = d->curX; _y = d->curY;
-	fontdraw_stringFont(d, "Vout <-> Vin", 1, p1);
+	fontdraw_stringFont(d, "Vo<", 1, p1);
 	st7735_update_window(d->parent, _x, _y, p1->FontWidth*12, p1->FontHeight );
 
-	d->curX = (d->frameWidth >> 1) - ((p1->FontWidth*15) >> 1);
+	d->curX = (d->frameWidth >> 1) + (pF->FontWidth>>1);
+	d->curY = pF->FontHeight - 1;
+	_x = d->curX; _y = d->curY;
+	fontdraw_stringFont(d, ">Vi", 1, p1);
+	st7735_update_window(d->parent, _x, _y, p1->FontWidth*12, p1->FontHeight );
+
+	d->curX = (d->frameWidth >> 1) - (pF->FontWidth>>1) - (p1->FontWidth*2);
 	d->curY = (pF->FontHeight << 1) + 3;
 	_x = d->curX; _y = d->curY;
-	fontdraw_stringFont(d, "portA <-> portC", 1, p1);
+	fontdraw_stringFont(d, "A<", 1, p1);
 	st7735_update_window(d->parent, _x, _y, p1->FontWidth*12, p1->FontHeight );
 	update_st7735_color();
+
+	d->curX = (d->frameWidth >> 1) + (pF->FontWidth>>1);
+	d->curY = (pF->FontHeight << 1) + 3;
+	_x = d->curX; _y = d->curY;
+	fontdraw_stringFont(d, ">C", 1, p1);
+	st7735_update_window(d->parent, _x, _y, p1->FontWidth*12, p1->FontHeight );
+	update_st7735_color();
+
 }
 
 void update_sw3518(sw35xx_t *swt, lcddev_t *d) {
@@ -229,6 +243,8 @@ int realmain(void) {
 		_val_++;
 		_val_ &= 7;
 		if(!_val_) { 
+			update_lcd_static(d);
+			update_smalllabel(d);
 			update_lcd_static(d);
 		} else {
 			swgp_gpo(&tCSF, 1);
