@@ -9,7 +9,8 @@
 //#define LCDFONT_INCLUDE_FONT_7x10
 //#define LCDFONT_INCLUDE_FONT_11x18
 #define LCDFONT_INCLUDE_FONT_12x16N
-#define LCDFONT_INCLUDE_FONT_12x24
+#define LCDFONT_INCLUDE_FONT_12x16AVW
+//#define LCDFONT_INCLUDE_FONT_12x24
 //#define LCDFONT_INCLUDE_FONT_16x21N
 //#define LCDFONT_INCLUDE_FONT_16x24
 //#define LCDFONT_INCLUDE_FONT_16x26
@@ -24,7 +25,7 @@
 //#define deffont Font_8x16
 //#define deffont Font_11x18
 //#define deffont Font_12x24
-#define deffont Font_12x24
+#define deffont Font_6x8
 //#define deffont Font_16x26
 //#define deffont Font_16x32
 
