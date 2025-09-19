@@ -143,15 +143,16 @@ void update_smalllabel(lcddev_t *d, sw35xx_t *sw) {
     fontdraw_stringFont(d, (char*)fcxq[_z], 1, p1);
     st7735_update_window((st7735_t*)d->parent, _x, _y, lw, lh );
 
-    lw = p1->FontWidth*10; lh=p1->FontHeight;
-    d->curX = (d->frameWidth >> 1) - (lw>>1);
-    d->curY = (pF->FontHeight << 1) + 18;
-    _x = d->curX; _y = d->curY;
-	_z = (1024 - SW35xx_readTemperature(sw, 0)) * 100;
-	str_4digitL(_z, str);
-    fontdraw_stringFont(d, "temp:", 1, p1);
-	fontdraw_stringFont(d, str, 1, p1);
-    st7735_update_window((st7735_t*)d->parent, _x, _y, lw, lh );
+	(void)sw;
+    //lw = p1->FontWidth*10; lh=p1->FontHeight;
+    //d->curX = (d->frameWidth >> 1) - (lw>>1);
+    //d->curY = (pF->FontHeight << 1) + 18;
+    //_x = d->curX; _y = d->curY;
+	//_z = SW35xx_readTemperature(sw, 0)); //NTC data
+	//str_4digitL(_z, str);
+    //fontdraw_stringFont(d, "temp:", 1, p1);
+	//fontdraw_stringFont(d, str, 1, p1);
+    //st7735_update_window((st7735_t*)d->parent, _x, _y, lw, lh );
     //update_st7735_color();
 
 	update_st7735_color();
